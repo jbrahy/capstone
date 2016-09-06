@@ -1,38 +1,30 @@
-require 'formula'
+require "formula"
 
 class Capstone < Formula
-  homepage 'http://capstone-engine.org'
-  url 'http://capstone-engine.org/download/2.1/capstone-2.1.tgz'
-  sha1 '3e5fe91684cfc76d73caa857a268332ac9d40659'
+  homepage "http://capstone-engine.org"
+  url "http://capstone-engine.org/download/3.0.1/capstone-3.0.1.tgz"
+  sha1 "7f206c853c6b8d05de22e919c2455ab661654093"
 
-  def patches
-    # fix pkgconfig path
-    DATA
+  bottle do
+    cellar :any
+    sha1 "319b41766dd67e3017b83b1ce3df3cc81e6feb6a" => :yosemite
+    sha1 "4f1bbe6b886c174924b1996aac7ed8d9850ff773" => :mavericks
+    sha1 "5a73b99066037a6270f550e07bee8cbcb8e30a2c" => :mountain_lion
   end
 
   def install
-    inreplace 'Makefile', 'lib64', 'lib'
+    # Capstone's Make script ignores the prefix env and was installing
+    # in /usr/local directly. So just inreplace the prefix for less pain.
+    # https://github.com/aquynh/capstone/issues/228
+    inreplace "make.sh", "export PREFIX=/usr/local", "export PREFIX=#{prefix}"
+
+    ENV["HOMEBREW_CAPSTONE"] = "1"
     system "./make.sh"
-    ENV["PREFIX"] = prefix
     system "./make.sh", "install"
   end
+
+  test do
+    # Given the build issues around prefix, check is actually in the Cellar.
+    assert File.exist? "#{lib}/libcapstone.a"
+  end
 end
-
-
-__END__
---- a/Makefile.org	2014-03-05 11:26:42.000000000 +0800
-+++ a/Makefile	2014-03-05 11:28:34.000000000 +0800
-@@ -144,13 +144,6 @@
- ifeq ($(UNAME_S),Darwin)
- EXT = dylib
- AR_EXT = a
--# By default, suppose that Brew is installed & use Brew path for pkgconfig file
--PKGCFCGDIR = /usr/local/lib/pkgconfig
--# is Macport installed instead?
--ifneq (,$(wildcard /opt/local/bin/port))
--# then correct the path for pkgconfig file
--PKGCFCGDIR = /opt/local/lib/pkgconfig
--endif
- else
- # Cygwin?
- IS_CYGWIN := $(shell $(CC) -dumpmachine | grep -i cygwin | wc -l)
